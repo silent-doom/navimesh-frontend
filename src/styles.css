@@ -1,0 +1,134 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+@import "@fontsource-variable/space-grotesk";
+@import "@fontsource-variable/dm-sans";
+@import "@fontsource-variable/jetbrains-mono";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-sans: "DM Sans Variable", system-ui, sans-serif;
+  --font-display: "Space Grotesk Variable", "DM Sans Variable", sans-serif;
+  --font-mono: "JetBrains Mono Variable", ui-monospace, Menlo, monospace;
+
+  --radius-sm: 2px;
+  --radius-md: 3px;
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 2px);
+  --radius-2xl: calc(var(--radius) + 6px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-ink: var(--ink);
+  --color-ink-foreground: var(--ink-foreground);
+
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-soft: var(--primary-soft);
+
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  --color-signal: var(--signal);
+  --color-signal-foreground: var(--signal-foreground);
+  --color-signal-soft: var(--signal-soft);
+
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+}
+
+:root {
+  --radius: 4px;
+
+  /* Paper substrate + navy ink — Navy Trust palette */
+  --background: oklch(0.985 0.003 240);      /* slate-50 */
+  --foreground: oklch(0.20 0.03 250);        /* slate-900 */
+  --surface: oklch(1 0 0);                   /* white card */
+  --surface-2: oklch(0.965 0.005 240);       /* slate-100 */
+
+  --ink: oklch(0.20 0.03 250);               /* dark card bg */
+  --ink-foreground: oklch(0.985 0.003 240);
+
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.20 0.03 250);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.20 0.03 250);
+
+  --primary: oklch(0.42 0.15 258);           /* deep municipal blue */
+  --primary-foreground: oklch(0.985 0.003 240);
+  --primary-soft: oklch(0.955 0.02 258);     /* blue-50 wash */
+
+  --secondary: oklch(0.965 0.005 240);
+  --secondary-foreground: oklch(0.20 0.03 250);
+
+  --muted: oklch(0.965 0.005 240);
+  --muted-foreground: oklch(0.48 0.02 250);  /* slate-500/600 */
+
+  --accent: oklch(0.42 0.15 258);
+  --accent-foreground: oklch(0.985 0.003 240);
+
+  --signal: oklch(0.68 0.17 152);            /* emerald signal */
+  --signal-foreground: oklch(0.15 0.05 152);
+  --signal-soft: oklch(0.68 0.17 152 / 0.12);
+
+  --destructive: oklch(0.55 0.22 27);
+  --destructive-foreground: oklch(0.985 0.003 240);
+
+  --border: oklch(0.90 0.008 250);           /* slate-200 */
+  --border-strong: oklch(0.82 0.01 250);     /* slate-300 */
+  --input: oklch(0.90 0.008 250);
+  --ring: oklch(0.42 0.15 258);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html, body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+    color: var(--color-foreground);
+  }
+}
+
+@utility font-mono-tight {
+  font-family: var(--font-mono);
+  letter-spacing: 0;
+}
+
+@utility label-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 1;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-muted-foreground);
+}
