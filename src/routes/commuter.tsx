@@ -1,17 +1,21 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
-import ReactMarkdown from "react-markdown";
+import { useEffect, useRef, useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
-import { postCommuterReroute } from "@/lib/api";
+import { postCommuterReroute, type CommuterReroutePlan, type RouteStep } from "@/lib/api";
 import { toFriendlyError, type FriendlyError } from "@/lib/friendly-error";
 import {
   AlertCircle,
+  AlertTriangle,
   Camera,
+  Car,
+  Footprints,
   Loader2,
   MapPin,
   RefreshCw,
   Route as RouteIcon,
   Send,
+  Train,
+  Bus,
   Upload,
   X,
 } from "lucide-react";
@@ -39,7 +43,7 @@ function CommuterPage() {
   const [preview, setPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<FriendlyError | null>(null);
-  const [plan, setPlan] = useState<string | null>(null);
+  const [plan, setPlan] = useState<CommuterReroutePlan | null>(null);
   const [gpsBusy, setGpsBusy] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -213,7 +217,7 @@ function CommuterPage() {
           </button>
         </form>
 
-        {plan && <RoutePlan markdown={plan} destination={destination} city={city} />}
+        {plan && <RoutePlan plan={plan} destination={destination} city={city} />}
       </main>
     </div>
   );
@@ -253,18 +257,10 @@ function ErrorBlock({ error, onRetry }: { error: FriendlyError; onRetry?: () => 
   );
 }
 
-// Presents the AI reroute plan as a structured, human-readable card.
-// The backend returns freeform markdown; we render it with tightened
-// typography that matches the civic aesthetic instead of relying on
-// generic prose styles. If the plan happens to contain multiple numbered
-// options (e.g. "Option 1", "Option 2"), we split them into side-by-side
-// panels for easier comparison.
-function RoutePlan({ markdown, destination, city }: { markdown: string; destination: string; city: string }) {
-  const sections = useMemo(() => splitOptions(markdown), [markdown]);
-
+function RoutePlan({ plan, destination, city }: { plan: CommuterReroutePlan; destination: string; city: string }) {
   return (
-    <section className="mt-8 border border-primary/40 bg-surface">
-      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-surface-2 px-5 py-3">
+    <section className="mt-8 space-y-4">
+      <header className="flex flex-wrap items-center justify-between gap-3 border border-primary/40 bg-surface-2 px-5 py-3">
         <div className="flex items-center gap-2">
           <RouteIcon className="size-4 text-primary" />
           <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-primary">
@@ -278,82 +274,85 @@ function RoutePlan({ markdown, destination, city }: { markdown: string; destinat
         )}
       </header>
 
-      <div className={sections.length > 1 ? "grid gap-px bg-border sm:grid-cols-2" : ""}>
-        {sections.map((s, i) => (
-          <div key={i} className="bg-surface p-5">
-            {s.title && (
-              <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.16em] text-signal">
-                {s.title}
-              </p>
-            )}
-            <MarkdownBody text={s.body} />
+      {plan.disruption_identified && (
+        <div className="border border-signal/40 bg-signal/5 p-5">
+          <div className="mb-2 flex items-center gap-2">
+            <AlertTriangle className="size-4 text-signal" />
+            <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-signal">
+              Disruption detected
+            </p>
           </div>
-        ))}
+          <p className="text-[15px] leading-relaxed text-foreground">
+            {plan.disruption_identified}
+          </p>
+        </div>
+      )}
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <RouteCard label="Primary route" tone="primary" steps={plan.primary_route} />
+        <RouteCard label="Backup route" tone="muted" steps={plan.secondary_route} />
       </div>
+
+      {plan.executive_summary && (
+        <div className="border border-border bg-surface p-5">
+          <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
+            Why these routes
+          </p>
+          <p className="text-[15px] leading-relaxed text-foreground">
+            {plan.executive_summary}
+          </p>
+        </div>
+      )}
     </section>
   );
 }
 
-function MarkdownBody({ text }: { text: string }) {
+function RouteCard({ label, tone, steps }: { label: string; tone: "primary" | "muted"; steps: RouteStep[] }) {
+  const accent = tone === "primary" ? "border-primary/50" : "border-border";
+  const eyebrowColor = tone === "primary" ? "text-primary" : "text-muted-foreground";
+  const safeSteps = Array.isArray(steps) ? steps : [];
   return (
-    <div className="space-y-3 text-[15px] leading-relaxed text-foreground">
-      <ReactMarkdown
-        components={{
-          h1: (props) => <h3 className="font-display text-lg font-semibold text-foreground" {...props} />,
-          h2: (props) => <h3 className="font-display text-lg font-semibold text-foreground" {...props} />,
-          h3: (props) => <h4 className="font-display text-base font-semibold text-foreground" {...props} />,
-          p: (props) => <p className="text-[15px] leading-relaxed text-foreground" {...props} />,
-          strong: (props) => <strong className="font-semibold text-foreground" {...props} />,
-          ul: (props) => <ul className="list-disc space-y-1 pl-5 marker:text-muted-foreground" {...props} />,
-          ol: (props) => <ol className="list-decimal space-y-1 pl-5 marker:text-muted-foreground" {...props} />,
-          li: (props) => <li className="text-[15px] leading-relaxed text-foreground" {...props} />,
-          a: (props) => <a className="text-primary underline underline-offset-2 hover:no-underline" target="_blank" rel="noreferrer" {...props} />,
-          code: (props) => <code className="border border-border bg-surface-2 px-1 py-0.5 font-mono text-[12px]" {...props} />,
-          hr: () => <hr className="my-3 border-border" />,
-        }}
-      >
-        {cleanMarkdown(text)}
-      </ReactMarkdown>
+    <div className={`border ${accent} bg-surface`}>
+      <div className="border-b border-border bg-surface-2 px-4 py-2.5">
+        <p className={`font-mono text-[10px] uppercase tracking-[0.18em] ${eyebrowColor}`}>
+          {label}
+        </p>
+      </div>
+      <ol className="divide-y divide-border">
+        {safeSteps.length === 0 && (
+          <li className="p-4 text-sm text-muted-foreground">No steps returned.</li>
+        )}
+        {safeSteps.map((step, i) => (
+          <li key={i} className="flex gap-3 p-4">
+            <div className="flex flex-col items-center">
+              <span className="grid size-7 place-items-center border border-border bg-surface-2 font-mono text-[11px] font-semibold text-foreground">
+                {i + 1}
+              </span>
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="mb-1 flex items-center gap-1.5">
+                <ModeIcon mode={step.transit_mode} />
+                <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
+                  {step.transit_mode || "Step"}
+                </span>
+              </div>
+              <p className="text-[15px] leading-relaxed text-foreground">
+                {step.instruction}
+              </p>
+            </div>
+          </li>
+        ))}
+      </ol>
     </div>
   );
 }
 
-// Normalize backend text: decode common HTML entities, collapse excessive
-// blank lines, and trim trailing whitespace so the output reads cleanly.
-function cleanMarkdown(t: string): string {
-  return decodeEntities(t).replace(/\n{3,}/g, "\n\n").trim();
-}
-
-function decodeEntities(t: string): string {
-  return t
-    .replace(/&nbsp;/gi, " ")
-    .replace(/&amp;/gi, "&")
-    .replace(/&lt;/gi, "<")
-    .replace(/&gt;/gi, ">")
-    .replace(/&quot;/gi, '"')
-    .replace(/&#39;/gi, "'")
-    .replace(/\u00a0/g, " ");
-}
-
-// Split "Option 1 / Option 2 / Route A / Route B" blocks into panels.
-// Falls back to a single panel when no such headings exist.
-function splitOptions(md: string): { title: string | null; body: string }[] {
-  const cleaned = cleanMarkdown(md);
-  const re = /^\s*(?:#{1,6}\s*)?(?:\*\*)?\s*(Option\s*\d+|Route\s*[A-Z0-9]+|Plan\s*[A-Z0-9]+)\b[^\n]*$/gim;
-  const matches = [...cleaned.matchAll(re)];
-  if (matches.length < 2) return [{ title: null, body: cleaned }];
-
-  const parts: { title: string | null; body: string }[] = [];
-  for (let i = 0; i < matches.length; i++) {
-    const start = matches[i].index ?? 0;
-    const end = i + 1 < matches.length ? (matches[i + 1].index ?? cleaned.length) : cleaned.length;
-    const slice = cleaned.slice(start, end);
-    const firstLineEnd = slice.indexOf("\n");
-    const rawTitle = (firstLineEnd === -1 ? slice : slice.slice(0, firstLineEnd))
-      .replace(/[#*]/g, "")
-      .trim();
-    const body = (firstLineEnd === -1 ? "" : slice.slice(firstLineEnd + 1)).trim();
-    parts.push({ title: rawTitle, body });
-  }
-  return parts;
+function ModeIcon({ mode }: { mode: string }) {
+  const m = (mode || "").toLowerCase();
+  const cls = "size-3.5 text-muted-foreground";
+  if (m.includes("walk") || m.includes("foot")) return <Footprints className={cls} />;
+  if (m.includes("train") || m.includes("metro") || m.includes("rail")) return <Train className={cls} />;
+  if (m.includes("bus")) return <Bus className={cls} />;
+  if (m.includes("cab") || m.includes("taxi") || m.includes("car") || m.includes("auto")) return <Car className={cls} />;
+  return <RouteIcon className={cls} />;
 }

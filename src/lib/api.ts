@@ -11,11 +11,23 @@ export const api = axios.create({
 
 export const API_BASE_URL = baseURL;
 
+export interface RouteStep {
+  instruction: string;
+  transit_mode: string;
+}
+
+export interface CommuterReroutePlan {
+  disruption_identified: string;
+  primary_route: RouteStep[];
+  secondary_route: RouteStep[];
+  executive_summary: string;
+}
+
 export interface CommuterRerouteResponse {
   status: string;
   city: string;
   destination: string;
-  ai_reroute_plan: string;
+  ai_reroute_plan: CommuterReroutePlan;
 }
 
 export interface SQLResponse {
