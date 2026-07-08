@@ -49,11 +49,17 @@ export async function postCommuterReroute(params: {
   city: string;
   destination: string;
   file: File;
+  lat?: string;
+  lng?: string;
 }): Promise<CommuterRerouteResponse> {
   const form = new FormData();
   form.append("city", params.city);
   form.append("destination", params.destination);
   form.append("file", params.file);
+  if (params.lat && params.lng) {
+    form.append("lat", params.lat);
+    form.append("lng", params.lng);
+  }
   const { data } = await api.post<CommuterRerouteResponse>(
     "/api/v1/commuter/reroute",
     form,

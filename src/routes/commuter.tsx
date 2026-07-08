@@ -10,6 +10,7 @@ import {
   Car,
   Footprints,
   Loader2,
+  LocateFixed,
   MapPin,
   RefreshCw,
   Route as RouteIcon,
@@ -45,6 +46,8 @@ function CommuterPage() {
   const [error, setError] = useState<FriendlyError | null>(null);
   const [plan, setPlan] = useState<CommuterReroutePlan | null>(null);
   const [gpsBusy, setGpsBusy] = useState(false);
+  const [coords, setCoords] = useState<{ lat: string; lng: string } | null>(null);
+  const [isLocating, setIsLocating] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => () => { if (preview) URL.revokeObjectURL(preview); }, [preview]);
@@ -86,6 +89,28 @@ function CommuterPage() {
     );
   }
 
+  function handleGetPreciseLocation() {
+    if (!("geolocation" in navigator)) {
+      setError({ title: "Geolocation isn't supported by your browser.", hint: "Type your city in the field instead." });
+      return;
+    }
+    setIsLocating(true); setError(null);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const lat = position.coords.latitude.toString();
+        const lng = position.coords.longitude.toString();
+        setCoords({ lat, lng });
+        setCity("Precise GPS Location Captured");
+        setIsLocating(false);
+      },
+      () => {
+        setError({ title: "Couldn't capture your precise location.", hint: "Please allow location access in your browser to use smart routing." });
+        setIsLocating(false);
+      },
+      { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 },
+    );
+  }
+
   async function submit() {
     if (!city || !destination || !file) {
       setError({ title: "A few things are still missing.", hint: "Please add a photo, your city, and a destination before continuing." });
@@ -93,7 +118,7 @@ function CommuterPage() {
     }
     setLoading(true); setError(null); setPlan(null);
     try {
-      const res = await postCommuterReroute({ city, destination, file });
+      const res = await postCommuterReroute({ city, destination, file, lat: coords?.lat, lng: coords?.lng });
       setPlan(res.ai_reroute_plan);
     } catch (err) {
       setError(toFriendlyError(err));
@@ -186,14 +211,28 @@ function CommuterPage() {
                 Detect
               </button>
             </div>
-            <div className="mt-2 flex flex-wrap gap-1.5">
+            <div className="mt-2 flex flex-wrap items-center gap-1.5">
               {CITY_HINTS.map((c) => (
-                <button type="button" key={c} onClick={() => setCity(c)}
+                <button type="button" key={c} onClick={() => { setCity(c); setCoords(null); }}
                   className="border border-border px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground transition-colors hover:border-primary hover:text-foreground">
                   {c}
                 </button>
               ))}
             </div>
+            <button
+              type="button"
+              onClick={handleGetPreciseLocation}
+              disabled={isLocating}
+              className="mt-3 inline-flex items-center gap-2 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-primary transition-colors hover:text-primary/80 disabled:opacity-50"
+            >
+              {isLocating ? <Loader2 className="size-3.5 animate-spin" /> : <LocateFixed className="size-3.5" />}
+              {isLocating ? "Acquiring satellites…" : "Use precise GPS location"}
+            </button>
+            {coords && (
+              <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+                Locked · {Number(coords.lat).toFixed(4)}, {Number(coords.lng).toFixed(4)}
+              </p>
+            )}
           </Field>
 
           <Field label="03 · Destination">
